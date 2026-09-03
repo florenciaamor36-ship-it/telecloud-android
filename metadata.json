@@ -1,0 +1,6 @@
+{
+  "name": "TeleCloud",
+  "description": "Galería y nube de respaldo automática en Telegram de cualquier carpeta del teléfono con limpiador seguro de almacenamiento.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
