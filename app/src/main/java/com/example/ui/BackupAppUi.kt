@@ -32,6 +32,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
+import coil.compose.AsyncImage
+import android.widget.VideoView
+import android.widget.MediaController
+import android.net.Uri
+import android.media.MediaPlayer
+import android.content.Intent
 import com.example.data.*
 import com.example.tdlib.TdApi
 import java.io.File
@@ -1626,30 +1634,213 @@ fun MediaItemDetailDialog(
     onDismiss: () -> Unit,
     onBackupNow: () -> Unit
 ) {
+    var isPlaying by remember { mutableStateOf(false) }
+    var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
+    val context = LocalContext.current
+
+    DisposableEffect(Unit) {
+        onDispose {
+            mediaPlayer?.release()
+            mediaPlayer = null
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(item.fileName, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                text = item.fileName,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                fontSize = 16.sp
+            )
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                DetailRow("Ubicación", item.folderName)
-                DetailRow("Tamaño", formatFileSize(item.sizeBytes))
-                DetailRow("Tipo", item.mediaType.name)
-                DetailRow("Ruta", item.filePath)
-                DetailRow(
-                    "Estado Nube",
-                    if (item.isBackedUp) "✅ Respaldado en Telegram (Msg ID: ${item.telegramMessageId ?: "OK"})" else "📱 Solo en teléfono"
-                )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Media Preview Area
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.Black),
+                    contentAlignment = Alignment.Center
+                ) {
+                    when (item.mediaType) {
+                        MediaType.IMAGE -> {
+                            AsyncImage(
+                                model = File(item.filePath),
+                                contentDescription = "Vista previa de la imagen",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                            )
+                        }
+                        MediaType.VIDEO -> {
+                            AndroidView(
+                                modifier = Modifier.fillMaxSize(),
+                                factory = { ctx ->
+                                    VideoView(ctx).apply {
+                                        val mediaController = MediaController(ctx)
+                                        mediaController.setAnchorView(this)
+                                        setMediaController(mediaController)
+                                        setVideoURI(Uri.fromFile(File(item.filePath)))
+                                        setOnPreparedListener { mp ->
+                                            mp.isLooping = true
+                                            start()
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                        MediaType.AUDIO -> {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxSize().padding(16.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Audiotrack,
+                                    contentDescription = null,
+                                    tint = TelegramBrandBlue,
+                                    modifier = Modifier.size(56.dp)
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    IconButton(
+                                        onClick = {
+                                            try {
+                                                if (isPlaying) {
+                                                    mediaPlayer?.pause()
+                                                    isPlaying = false
+                                                } else {
+                                                    if (mediaPlayer == null) {
+                                                        mediaPlayer = MediaPlayer().apply {
+                                                            setDataSource(item.filePath)
+                                                            prepare()
+                                                            setOnCompletionListener {
+                                                                isPlaying = false
+                                                            }
+                                                        }
+                                                    }
+                                                    mediaPlayer?.start()
+                                                    isPlaying = true
+                                                }
+                                            } catch (e: Exception) {
+                                                e.printStackTrace()
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .background(TelegramBrandBlue, CircleShape)
+                                            .size(44.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                            contentDescription = if (isPlaying) "Pausar" else "Reproducir",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = if (isPlaying) "Reproduciendo audio..." else "Toca para reproducir",
+                                    fontSize = 11.sp,
+                                    color = Color.LightGray
+                                )
+                            }
+                        }
+                        else -> {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Icon(
+                                    imageVector = when (item.mediaType) {
+                                        MediaType.DOCUMENT -> Icons.Default.Description
+                                        MediaType.TEMPORARY -> Icons.Default.FolderZip
+                                        else -> Icons.Default.InsertDriveFile
+                                    },
+                                    contentDescription = null,
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("Sin vista previa para este archivo", fontSize = 11.sp, color = Color.Gray)
+                            }
+                        }
+                    }
+                }
+
+                // File Details Metadata
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 110.dp)
+                        .background(Color.Black.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                        .padding(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    DetailRow("Ubicación", item.folderName)
+                    DetailRow("Tamaño", formatFileSize(item.sizeBytes))
+                    DetailRow("Tipo", item.mediaType.name)
+                    DetailRow("Ruta", item.filePath)
+                    DetailRow(
+                        "Estado Nube",
+                        if (item.isBackedUp) "✅ Respaldado en Telegram" else "📱 Solo en teléfono"
+                    )
+                }
             }
         },
         confirmButton = {
-            if (!item.isBackedUp) {
-                Button(
-                    onClick = onBackupNow,
-                    colors = ButtonDefaults.buttonColors(containerColor = TelegramBlue, contentColor = Color(0xFF00315E))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Open in System Player Fallback
+                IconButton(
+                    onClick = {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                val file = File(item.filePath)
+                                val uri = Uri.fromFile(file)
+                                val mimeType = when (item.mediaType) {
+                                    MediaType.IMAGE -> "image/*"
+                                    MediaType.VIDEO -> "video/*"
+                                    MediaType.AUDIO -> "audio/*"
+                                    else -> "*/*"
+                                }
+                                setDataAndType(uri, mimeType)
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    },
+                    modifier = Modifier.background(Color.White.copy(alpha = 0.08f), CircleShape)
                 ) {
-                    Text("Subir a Telegram Ahora", fontWeight = FontWeight.Bold)
+                    Icon(
+                        imageVector = Icons.Default.OpenInNew,
+                        contentDescription = "Abrir con otra app",
+                        tint = Color.LightGray
+                    )
+                }
+
+                if (!item.isBackedUp) {
+                    Button(
+                        onClick = onBackupNow,
+                        colors = ButtonDefaults.buttonColors(containerColor = TelegramBlue, contentColor = Color(0xFF00315E))
+                    ) {
+                        Text("Subir", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         },
