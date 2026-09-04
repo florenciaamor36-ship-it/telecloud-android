@@ -2,6 +2,8 @@ package com.example.ui
 
 import android.app.Application
 import android.content.Intent
+import android.content.ContentUris
+import android.provider.MediaStore
 import android.os.Environment
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
@@ -310,6 +312,11 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
 
+
+            // En Android 10+ MediaStore es la fuente fiable y entrega URIs
+            // que permiten mostrar miniaturas aunque el sistema limite File().
+            scanMediaStore(items, visitedPaths, logMap)
+
             // Filtrar ocultos y temporales si el usuario lo desactiva
             val finalItems = if (_showHiddenAndTemp.value) {
                 items
@@ -351,6 +358,59 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
             _cleanerCandidates.value = candidates
+        }
+    }
+
+    private fun scanMediaStore(
+        items: MutableList<GalleryMediaItem>,
+        visitedPaths: MutableSet<String>,
+        logMap: Map<String, UploadLog>
+    ) {
+        val resolver = getApplication<Application>().contentResolver
+        val sources = listOf(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI to MediaType.IMAGE,
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI to MediaType.VIDEO
+        )
+        val projection = arrayOf(
+            MediaStore.MediaColumns._ID,
+            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.DATA,
+            MediaStore.MediaColumns.SIZE,
+            MediaStore.MediaColumns.DATE_MODIFIED,
+            MediaStore.MediaColumns.RELATIVE_PATH
+        )
+        for ((collection, type) in sources) {
+            runCatching {
+                resolver.query(collection, projection, null, null,
+                    "${MediaStore.MediaColumns.DATE_MODIFIED} DESC")?.use { cursor ->
+                    val id = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                    val name = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+                    val data = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
+                    val size = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
+                    val modified = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_MODIFIED)
+                    val relative = cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
+                    while (cursor.moveToNext()) {
+                        val uri = ContentUris.withAppendedId(collection, cursor.getLong(id))
+                        val path = if (data >= 0) cursor.getString(data).orEmpty() else ""
+                        val key = path.ifBlank { uri.toString() }
+                        if (!visitedPaths.add(key)) continue
+                        val fileName = cursor.getString(name) ?: "Sin nombre"
+                        val log = logMap[path]
+                        items.add(GalleryMediaItem(
+                            filePath = key,
+                            fileName = fileName,
+                            folderName = if (relative >= 0) cursor.getString(relative) ?: "Galería" else "Galería",
+                            sizeBytes = if (size >= 0) cursor.getLong(size) else 0L,
+                            lastModified = if (modified >= 0) cursor.getLong(modified) * 1000L else 0L,
+                            mediaType = type,
+                            isBackedUp = log?.status == "COMPLETED",
+                            telegramMessageId = log?.telegramMessageId,
+                            backupStatus = log?.status ?: "LOCAL",
+                            contentUri = uri.toString()
+                        ))
+                    }
+                }
+            }.onFailure { Log.w(TAG, "No se pudo consultar MediaStore", it) }
         }
     }
 
