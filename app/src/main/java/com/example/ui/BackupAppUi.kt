@@ -573,20 +573,27 @@ fun GalleryMediaCard(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = when {
-                        item.isHidden -> Icons.Default.VisibilityOff
-                        item.isTemporary -> Icons.Default.HourglassEmpty
-                        item.mediaType == MediaType.IMAGE -> Icons.Default.Image
-                        item.mediaType == MediaType.VIDEO -> Icons.Default.Videocam
-                        item.mediaType == MediaType.DOCUMENT -> Icons.Default.Description
-                        item.mediaType == MediaType.AUDIO -> Icons.Default.AudioFile
-                        else -> Icons.Default.InsertDriveFile
-                    },
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.8f),
-                    modifier = Modifier.size(36.dp)
-                )
+                if (item.mediaType == MediaType.IMAGE || item.mediaType == MediaType.VIDEO) {
+                    AsyncImage(
+                        model = item.contentUri ?: File(item.filePath),
+                        contentDescription = "Vista previa de ${item.fileName}",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = when {
+                            item.isHidden -> Icons.Default.VisibilityOff
+                            item.isTemporary -> Icons.Default.HourglassEmpty
+                            item.mediaType == MediaType.DOCUMENT -> Icons.Default.Description
+                            item.mediaType == MediaType.AUDIO -> Icons.Default.AudioFile
+                            else -> Icons.Default.InsertDriveFile
+                        },
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.8f),
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
 
                 // Badges en la parte superior
                 Row(
@@ -1673,7 +1680,7 @@ fun MediaItemDetailDialog(
                     when (item.mediaType) {
                         MediaType.IMAGE -> {
                             AsyncImage(
-                                model = File(item.filePath),
+                                model = item.contentUri ?: File(item.filePath),
                                 contentDescription = "Vista previa de la imagen",
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = androidx.compose.ui.layout.ContentScale.Fit
@@ -1687,7 +1694,7 @@ fun MediaItemDetailDialog(
                                         val mediaController = MediaController(ctx)
                                         mediaController.setAnchorView(this)
                                         setMediaController(mediaController)
-                                        setVideoURI(Uri.fromFile(File(item.filePath)))
+                                        setVideoURI(item.contentUri?.let(Uri::parse) ?: Uri.fromFile(File(item.filePath)))
                                         setOnPreparedListener { mp ->
                                             mp.isLooping = true
                                             start()
