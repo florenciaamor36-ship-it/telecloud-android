@@ -21,7 +21,9 @@ data class GalleryMediaItem(
     val isHidden: Boolean = false,
     val isTemporary: Boolean = false,
     val telegramMessageId: Long? = null,
-    val backupStatus: String = "LOCAL" // "LOCAL", "PENDING", "UPLOADING", "BACKED_UP", "BACKED_UP_FREED"
+    val backupStatus: String = "LOCAL", // "LOCAL", "PENDING", "UPLOADING", "BACKED_UP", "BACKED_UP_FREED"
+    // URI de MediaStore para previsualizar contenido en Android 10+ (scoped storage).
+    val contentUri: String? = null
 )
 
 data class CleanerCandidate(
