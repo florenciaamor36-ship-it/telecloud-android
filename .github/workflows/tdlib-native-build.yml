@@ -1,0 +1,32 @@
+name: Build TDLib native Android bundle
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-tdlib:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout TDLib
+        uses: actions/checkout@v4
+        with:
+          repository: tdlib/td
+          path: td
+
+      - name: Build TDLib for Android
+        working-directory: td/example/android
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./check-environment.sh
+          ./fetch-sdk.sh
+          ./build-openssl.sh
+          ./build-tdlib.sh
+
+      - name: Upload native TDLib bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: tdlib-android-bundle
+          path: td/example/android/tdlib
+          if-no-files-found: error
