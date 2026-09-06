@@ -1,5 +1,6 @@
 
 import java.util.Properties
+import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
 
 val localProperties = Properties().apply {
   val file = rootProject.file("local.properties")
@@ -11,8 +12,6 @@ fun secretProperty(name: String): String =
 
 val telegramApiId = secretProperty("TELEGRAM_API_ID").toIntOrNull() ?: 0
 val telegramApiHash = secretProperty("TELEGRAM_API_HASH")
-import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
-
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
