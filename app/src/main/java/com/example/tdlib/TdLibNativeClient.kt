@@ -48,9 +48,7 @@ class TdLibNativeClient(
         parameters.deviceModel = "Android"
         parameters.systemVersion = "Android"
         parameters.applicationVersion = BuildConfig.VERSION_NAME
-        parameters.databaseEncryptionKey = ""
-        parameters.enableStorageOptimizer = true
-        parameters.ignoreFileNames = false
+        parameters.databaseEncryptionKey = ByteArray(0)
         client.send(parameters, resultHandler())
         client.send(TdApi.GetAuthorizationState(), resultHandler())
     }
