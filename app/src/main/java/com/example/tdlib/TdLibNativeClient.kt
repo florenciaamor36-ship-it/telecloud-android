@@ -25,11 +25,11 @@ class TdLibNativeClient(
                 }
             }
         }, object : Client.ExceptionHandler {
-            override fun onException(e: Exception?) {
+            override fun onException(e: Throwable?) {
                 onError(e ?: IllegalStateException("TDLib update error"))
             }
         }, object : Client.ExceptionHandler {
-            override fun onException(e: Exception?) {
+            override fun onException(e: Throwable?) {
                 onError(e ?: IllegalStateException("TDLib request error"))
             }
         })
@@ -40,7 +40,7 @@ class TdLibNativeClient(
         client.send(
             TdApi.SetAuthenticationPhoneNumber(
                 phone,
-                TdApi.PhoneNumberAuthenticationSettings(false, false, false, false, false, false, false)
+                TdApi.PhoneNumberAuthenticationSettings(null, null, false, false, false, false)
             ),
             resultHandler()
         )
