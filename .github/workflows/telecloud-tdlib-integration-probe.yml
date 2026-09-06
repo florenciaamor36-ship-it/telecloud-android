@@ -1,0 +1,35 @@
+name: TeleCloud TDLib integration probe
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout TeleCloud
+        uses: actions/checkout@v4
+
+      - name: Download successful TDLib build
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: 9974844725
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: tdlib-bundle
+          run-id: 33981719376
+
+      - name: Inspect generated TDLib bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'TDLib bundle files:'
+          find tdlib-bundle -maxdepth 4 -type f | sort | sed -n '1,120p'
+          test -d tdlib-bundle/tdlib/java || test -d tdlib-bundle/java
+          find tdlib-bundle -type f \( -name '*.so' -o -name '*.aar' -o -name '*.jar' \) | sort
+
+      - name: Verify TeleCloud baseline build
+        run: ./gradlew :app:assembleDebug --stacktrace
