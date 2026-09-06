@@ -47,5 +47,8 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Create debug keystore for baseline build
+        run: keytool -genkeypair -v -keystore debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname 'CN=Android Debug,O=Android,C=US'
+
       - name: Verify TeleCloud baseline build
         run: gradle :app:assembleDebug --no-daemon --stacktrace
