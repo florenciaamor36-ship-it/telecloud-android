@@ -28,8 +28,15 @@ jobs:
           set -euo pipefail
           echo 'TDLib bundle files:'
           find tdlib-bundle -maxdepth 4 -type f | sort | sed -n '1,120p'
-          test -d tdlib-bundle/tdlib/java || test -d tdlib-bundle/java
-          find tdlib-bundle -type f \( -name '*.so' -o -name '*.aar' -o -name '*.jar' \) | sort
+          bundle=$(find tdlib-bundle -name 'tdlib.zip' -type f | head -1)
+          test -n "$bundle"
+          mkdir -p tdlib-unpacked
+          unzip -q "$bundle" -d tdlib-unpacked
+          test -d tdlib-unpacked/java
+          echo 'Generated Java bindings:'
+          find tdlib-unpacked/java -type f | sort | sed -n '1,40p'
+          echo 'Native libraries:'
+          find tdlib-bundle -type f -name '*.so' | sort
 
       - name: Verify TeleCloud baseline build
         run: ./gradlew :app:assembleDebug --stacktrace
