@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -1324,6 +1325,7 @@ fun CloudSettingsScreen(
 ) {
     var phoneInput by remember { mutableStateOf(settings.activePhoneNumber ?: "") }
     var codeInput by remember { mutableStateOf("") }
+    var passwordInput by remember { mutableStateOf("") }
     val isReady = authState is TdApi.AuthorizationStateReady || settings.activePhoneNumber != null
 
     LazyColumn(
@@ -1445,6 +1447,23 @@ fun CloudSettingsScreen(
                                     Text("Validar", fontWeight = FontWeight.Bold)
                                 }
                             }
+                        } else if (authState is TdApi.AuthorizationStateWaitPassword) {
+                            Text("Contraseña de verificación en dos pasos:", fontSize = 12.sp, color = Color.LightGray)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            OutlinedTextField(
+                                value = passwordInput,
+                                onValueChange = { passwordInput = it },
+                                label = { Text("Contraseña 2FA") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                visualTransformation = PasswordVisualTransformation()
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = { viewModel.submitPassword(passwordInput) },
+                                colors = ButtonDefaults.buttonColors(containerColor = TelegramBlue),
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Validar contraseña", fontWeight = FontWeight.Bold) }
                         } else {
                             Text("Ingresa tu número con código de país:", fontSize = 12.sp, color = Color.LightGray)
                             Spacer(modifier = Modifier.height(6.dp))

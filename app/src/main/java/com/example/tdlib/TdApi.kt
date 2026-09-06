@@ -25,6 +25,7 @@ object TdApi {
         val isRegistered: Boolean = true,
         val termsOfService: Object? = null
     ) : AuthorizationState()
+    class AuthorizationStateWaitPassword : AuthorizationState()
     class AuthorizationStateReady : AuthorizationState()
     class AuthorizationStateLoggingOut : AuthorizationState()
     class AuthorizationStateClosing : AuthorizationState()

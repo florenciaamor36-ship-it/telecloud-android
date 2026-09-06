@@ -117,6 +117,10 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
         tdLibManager.checkVerificationCode(code, repository)
     }
 
+    fun submitPassword(password: String) {
+        tdLibManager.checkAuthenticationPassword(password)
+    }
+
     fun logout() {
         tdLibManager.logout(repository)
         stopBackupService()

@@ -50,6 +50,7 @@ class TdLibManager(private val context: Context) {
                 when (state) {
                     is org.drinkless.tdlib.TdApi.AuthorizationStateWaitPhoneNumber -> _authState.value = TdApi.AuthorizationStateWaitPhoneNumber()
                     is org.drinkless.tdlib.TdApi.AuthorizationStateWaitCode -> _authState.value = TdApi.AuthorizationStateWaitCode()
+                    is org.drinkless.tdlib.TdApi.AuthorizationStateWaitPassword -> _authState.value = TdApi.AuthorizationStateWaitPassword()
                     is org.drinkless.tdlib.TdApi.AuthorizationStateReady -> {
                         _authState.value = TdApi.AuthorizationStateReady()
                         _isConnected.value = true
@@ -105,6 +106,11 @@ class TdLibManager(private val context: Context) {
         } else {
             Log.e(TAG, "Código de verificación no válido")
         }
+    }
+
+    fun checkAuthenticationPassword(password: String) {
+        val cleanPassword = password.trim()
+        if (cleanPassword.isNotEmpty()) nativeClient?.checkPassword(cleanPassword)
     }
 
     /**
