@@ -79,6 +79,26 @@ class TdLibNativeClient(
         client.send(TdApi.CheckAuthenticationPassword(password), resultHandler())
     }
 
+    fun sendDocument(chatId: Long, filePath: String, onSent: (Long) -> Unit, onFailure: (Throwable) -> Unit) {
+        val content = TdApi.InputMessageDocument(
+            TdApi.InputFileLocal(filePath),
+            TdApi.FormattedText("", emptyArray()),
+            false
+        )
+        client.send(
+            TdApi.SendMessage(chatId, 0L, 0L, null, null, content),
+            object : Client.ResultHandler {
+                override fun onResult(value: TdApi.Object?) {
+                    when (value) {
+                        is TdApi.Message -> onSent(value.id)
+                        is TdApi.Error -> onFailure(IllegalStateException("TDLib ${value.code}: ${value.message}"))
+                        else -> onFailure(IllegalStateException("Unexpected TDLib send result"))
+                    }
+                }
+            }
+        )
+    }
+
     private fun resultHandler() = object : Client.ResultHandler {
         override fun onResult(result: TdApi.Object?) {
             if (result is TdApi.Error) {

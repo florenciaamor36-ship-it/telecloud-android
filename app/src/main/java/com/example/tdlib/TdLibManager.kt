@@ -11,7 +11,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
 import java.io.File
 
 /**
@@ -166,8 +168,27 @@ class TdLibManager(private val context: Context) {
     // Compatibilidad para llamadas existentes
     suspend fun ensureBackupChannelAndTopics(repository: BackupRepository) = ensureSavedMessagesDestination(repository)
 
+    private suspend fun sendFileToTelegram(
+        filePath: String,
+        chatId: Long,
+        repository: BackupRepository
+    ): Boolean = suspendCancellableCoroutine { continuation ->
+        nativeClient?.sendDocument(
+            chatId,
+            filePath,
+            onSent = { messageId ->
+                scope.launch { repository.logUploadCompleted(filePath, messageId) }
+                continuation.resume(true)
+            },
+            onFailure = { error ->
+                scope.launch { repository.logUploadFailed(filePath, error.message ?: "Error de Telegram") }
+                continuation.resume(false)
+            }
+        ) ?: continuation.resume(false)
+    }
+
     /**
-     * Sube un archivo real a 'Mensajes Guardados' de Telegram con reintentos y etiquetas organizadoras.
+     * Sube un archivo real a 'Mensajes Guardados' de Telegram con confirmación real de TDLib.
      */
     suspend fun uploadFileToTopic(
         filePath: String,
@@ -187,6 +208,8 @@ class TdLibManager(private val context: Context) {
             repository.logUploadFailed(filePath, "Mensajes Guardados no inicializado")
             return@withContext false
         }
+
+        return@withContext sendFileToTelegram(filePath, settings.telegramChannelId, repository)
 
         var success = false
         var attempts = 0
