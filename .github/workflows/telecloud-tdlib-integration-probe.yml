@@ -41,5 +41,11 @@ jobs:
           echo 'Native libraries:'
           find tdlib-bundle -type f -name '*.so' | sort
 
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - name: Verify TeleCloud baseline build
-        run: ./gradlew :app:assembleDebug --stacktrace
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
