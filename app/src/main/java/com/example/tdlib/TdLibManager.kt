@@ -2,6 +2,7 @@ package com.example.tdlib
 
 import android.content.Context
 import android.util.Log
+import com.example.BuildConfig
 import com.example.data.BackupRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,12 +32,42 @@ class TdLibManager(private val context: Context) {
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
 
     private var activePhoneNumber: String = ""
+    private var nativeClient: TdLibNativeClient? = null
+
+    // Parámetros reales de Telegram. La sesión TDLib todavía requiere enlazar la biblioteca JNI.
+    private val telegramParameters = TdApi.TdlibParameters(
+        apiId = BuildConfig.TELEGRAM_API_ID,
+        apiHash = BuildConfig.TELEGRAM_API_HASH,
+        databaseDirectory = File(context.filesDir, "telegram-db").absolutePath,
+        filesDirectory = File(context.filesDir, "telegram-files").absolutePath,
+        applicationVersion = BuildConfig.VERSION_NAME
+    )
 
     init {
+        nativeClient = TdLibNativeClient(
+            context = context,
+            onAuthorizationState = { state ->
+                when (state) {
+                    is org.drinkless.tdlib.TdApi.AuthorizationStateWaitPhoneNumber -> _authState.value = TdApi.AuthorizationStateWaitPhoneNumber()
+                    is org.drinkless.tdlib.TdApi.AuthorizationStateWaitCode -> _authState.value = TdApi.AuthorizationStateWaitCode()
+                    is org.drinkless.tdlib.TdApi.AuthorizationStateReady -> {
+                        _authState.value = TdApi.AuthorizationStateReady()
+                        _isConnected.value = true
+                    }
+                    else -> Log.d(TAG, "TDLib authorization state: ${state.javaClass.simpleName}")
+                }
+            },
+            onError = { error -> Log.e(TAG, "TDLib error", error) }
+        )
         initializeClient()
     }
 
     private fun initializeClient() {
+        if (telegramParameters.apiId <= 0 || telegramParameters.apiHash.isBlank()) {
+            Log.e(TAG, "Faltan TELEGRAM_API_ID o TELEGRAM_API_HASH")
+        } else {
+            Log.d(TAG, "Parámetros de Telegram cargados para TDLib (api_id=${telegramParameters.apiId})")
+        }
         Log.d(TAG, "Inicializando cliente TDLib...")
         scope.launch {
             val database = com.example.data.AppDatabase.getDatabase(context)
@@ -59,9 +90,7 @@ class TdLibManager(private val context: Context) {
         Log.d(TAG, "Configurando número de teléfono: $cleanPhone")
         activePhoneNumber = cleanPhone
 
-        scope.launch {
-            _authState.value = TdApi.AuthorizationStateWaitCode()
-        }
+        nativeClient?.setPhoneNumber(cleanPhone)
     }
 
     /**
@@ -71,23 +100,10 @@ class TdLibManager(private val context: Context) {
         val cleanCode = code.trim()
         Log.d(TAG, "Validando código de acceso de Telegram")
 
-        scope.launch {
-            if (cleanCode.isNotEmpty()) {
-                _authState.value = TdApi.AuthorizationStateReady()
-                _isConnected.value = true
-
-                val settings = repository.getSettings()
-                repository.updateSettings(
-                    settings.copy(
-                        activePhoneNumber = activePhoneNumber.ifBlank { "+54 9 11 0000 0000" },
-                        isAutoBackupEnabled = true
-                    )
-                )
-
-                ensureSavedMessagesDestination(repository)
-            } else {
-                Log.e(TAG, "Código de verificación no válido")
-            }
+        if (cleanCode.isNotEmpty()) {
+            nativeClient?.checkCode(cleanCode)
+        } else {
+            Log.e(TAG, "Código de verificación no válido")
         }
     }
 

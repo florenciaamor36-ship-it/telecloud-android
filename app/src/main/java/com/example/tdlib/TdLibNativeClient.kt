@@ -2,6 +2,7 @@ package com.example.tdlib
 
 import android.content.Context
 import android.util.Log
+import com.example.BuildConfig
 import org.drinkless.tdlib.Client
 import org.drinkless.tdlib.TdApi
 import java.io.File
@@ -33,6 +34,15 @@ class TdLibNativeClient(
                 onError(e ?: IllegalStateException("TDLib request error"))
             }
         })
+        val parameters = TdApi.TdlibParameters()
+        parameters.databaseDirectory = File(filesDir, "telegram-db").absolutePath
+        parameters.filesDirectory = File(filesDir, "telegram-files").absolutePath
+        parameters.apiId = BuildConfig.TELEGRAM_API_ID
+        parameters.apiHash = BuildConfig.TELEGRAM_API_HASH
+        parameters.systemLanguageCode = "es"
+        parameters.deviceModel = "Android"
+        parameters.applicationVersion = BuildConfig.VERSION_NAME
+        client.send(TdApi.SetTdlibParameters(parameters), resultHandler())
         client.send(TdApi.GetAuthorizationState(), resultHandler())
     }
 
