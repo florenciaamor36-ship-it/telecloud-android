@@ -41,6 +41,19 @@ jobs:
           echo 'Native libraries:'
           find tdlib-bundle -type f -name '*.so' | sort
 
+      - name: Integrate official TDLib sources into app build
+        shell: bash
+        run: |
+          set -euo pipefail
+          java_dir=$(find tdlib-unpacked -type d -name java | head -1)
+          mkdir -p app/src/main/java app/src/main/jniLibs
+          cp -R "$java_dir"/org app/src/main/java/
+          cp -R tdlib-bundle/tdlib-android-bundle/libs/. app/src/main/jniLibs/
+          test -f app/src/main/java/org/drinkless/tdlib/Client.java
+          test -f app/src/main/java/org/drinkless/tdlib/TdApi.java
+          test -f app/src/main/jniLibs/arm64-v8a/libtdjni.so
+          echo 'Official TDLib sources and native libraries are now part of this app build.'
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
