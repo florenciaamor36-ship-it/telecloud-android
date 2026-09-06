@@ -63,5 +63,12 @@ jobs:
       - name: Create debug keystore for baseline build
         run: keytool -genkeypair -v -keystore debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname 'CN=Android Debug,O=Android,C=US'
 
-      - name: Verify TeleCloud baseline build
+      - name: Build TeleCloud APK with TDLib
         run: gradle :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Upload TeleCloud APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: telecloud-tdlib-real-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
