@@ -34,15 +34,24 @@ class TdLibNativeClient(
                 onError(e ?: IllegalStateException("TDLib request error"))
             }
         })
-        val parameters = TdApi.TdlibParameters()
+        val parameters = TdApi.SetTdlibParameters()
+        parameters.useTestDc = false
         parameters.databaseDirectory = File(filesDir, "telegram-db").absolutePath
         parameters.filesDirectory = File(filesDir, "telegram-files").absolutePath
+        parameters.useFileDatabase = true
+        parameters.useChatInfoDatabase = true
+        parameters.useMessageDatabase = true
+        parameters.useSecretChats = false
         parameters.apiId = BuildConfig.TELEGRAM_API_ID
         parameters.apiHash = BuildConfig.TELEGRAM_API_HASH
         parameters.systemLanguageCode = "es"
         parameters.deviceModel = "Android"
+        parameters.systemVersion = "Android"
         parameters.applicationVersion = BuildConfig.VERSION_NAME
-        client.send(TdApi.SetTdlibParameters(parameters), resultHandler())
+        parameters.databaseEncryptionKey = ""
+        parameters.enableStorageOptimizer = true
+        parameters.ignoreFileNames = false
+        client.send(parameters, resultHandler())
         client.send(TdApi.GetAuthorizationState(), resultHandler())
     }
 
