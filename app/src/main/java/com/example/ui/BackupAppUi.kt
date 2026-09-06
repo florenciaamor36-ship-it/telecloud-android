@@ -78,6 +78,7 @@ fun BackupAppUi(viewModel: BackupViewModel) {
     val isCleaning by viewModel.isCleaning.collectAsState()
     val authState by viewModel.authState.collectAsState()
     val isConnected by viewModel.isConnected.collectAsState()
+    val authError by viewModel.tdLibManager.authError.collectAsState()
     val showHiddenAndTemp by viewModel.showHiddenAndTemp.collectAsState()
 
     val currentBrowsingPath by viewModel.currentBrowsingPath.collectAsState()
@@ -251,7 +252,8 @@ fun BackupAppUi(viewModel: BackupViewModel) {
                     settings = settings,
                     uploadLogs = uploadLogs,
                     authState = authState,
-                    isConnected = isConnected
+                    isConnected = isConnected,
+                    authError = authError
                 )
                 AppTab.INFO -> HelpAndLegalScreen()
             }
@@ -1321,7 +1323,8 @@ fun CloudSettingsScreen(
     settings: BackupSettings,
     uploadLogs: List<UploadLog>,
     authState: TdApi.AuthorizationState,
-    isConnected: Boolean
+    isConnected: Boolean,
+    authError: String?
 ) {
     var phoneInput by remember { mutableStateOf(settings.activePhoneNumber ?: "") }
     var codeInput by remember { mutableStateOf("") }
@@ -1422,6 +1425,11 @@ fun CloudSettingsScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         Divider(color = CardBorderColor)
                         Spacer(modifier = Modifier.height(12.dp))
+
+                        authError?.let { message ->
+                            Text("Error de Telegram: $message", color = Color(0xFFFF8A80), fontSize = 12.sp)
+                            Spacer(modifier = Modifier.height(6.dp))
+                        }
 
                         if (authState is TdApi.AuthorizationStateWaitCode) {
                             Text("Código de confirmación de Telegram:", fontSize = 12.sp, color = Color.LightGray)

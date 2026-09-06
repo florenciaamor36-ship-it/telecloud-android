@@ -33,6 +33,9 @@ class TdLibManager(private val context: Context) {
     private val _isConnected = MutableStateFlow(false)
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
 
+    private val _authError = MutableStateFlow<String?>(null)
+    val authError: StateFlow<String?> = _authError.asStateFlow()
+
     private var activePhoneNumber: String = ""
     private var nativeClient: TdLibNativeClient? = null
 
@@ -63,7 +66,10 @@ class TdLibManager(private val context: Context) {
             onSelfUser = { userId ->
                 scope.launch { updateSavedMessagesDestination(userId) }
             },
-            onError = { error -> Log.e(TAG, "TDLib error", error) }
+            onError = { error ->
+                _authError.value = error.message ?: "Telegram rechazó la solicitud"
+                Log.e(TAG, "TDLib error", error)
+            }
         )
         initializeClient()
     }
@@ -93,6 +99,7 @@ class TdLibManager(private val context: Context) {
      */
     fun setPhoneNumber(phoneNumber: String) {
         val cleanPhone = phoneNumber.trim()
+        _authError.value = null
         Log.d(TAG, "Configurando número de teléfono: $cleanPhone")
         activePhoneNumber = cleanPhone
 
