@@ -82,13 +82,12 @@ class TdLibNativeClient(
     fun sendDocument(chatId: Long, filePath: String, onSent: (Long) -> Unit, onFailure: (Throwable) -> Unit) {
         val document = TdApi.InputDocument()
         document.document = TdApi.InputFileLocal(filePath)
-        document.fileName = File(filePath).name
         val content = TdApi.InputMessageDocument(
             document,
             TdApi.FormattedText("", emptyArray())
         )
         client.send(
-            TdApi.SendMessage(chatId, null, null, null, 0, true, content),
+            TdApi.SendMessage(chatId, null, null, null, null, content),
             object : Client.ResultHandler {
                 override fun onResult(value: TdApi.Object?) {
                     when (value) {
