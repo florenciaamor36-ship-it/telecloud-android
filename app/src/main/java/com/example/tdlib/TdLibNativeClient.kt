@@ -11,6 +11,7 @@ import java.io.File
 class TdLibNativeClient(
     context: Context,
     private val onAuthorizationState: (TdApi.AuthorizationState) -> Unit,
+    private val onSelfUser: (Long) -> Unit,
     private val onError: (Throwable) -> Unit
 ) {
     private val tag = "TdLibNativeClient"
@@ -23,6 +24,13 @@ class TdLibNativeClient(
             override fun onResult(result: TdApi.Object?) {
                 if (result is TdApi.UpdateAuthorizationState) {
                     onAuthorizationState(result.authorizationState)
+                    if (result.authorizationState is TdApi.AuthorizationStateReady) {
+                        client.send(TdApi.GetMe(), object : Client.ResultHandler {
+                            override fun onResult(value: TdApi.Object?) {
+                                if (value is TdApi.User) onSelfUser(value.id)
+                            }
+                        })
+                    }
                 }
             }
         }, object : Client.ExceptionHandler {

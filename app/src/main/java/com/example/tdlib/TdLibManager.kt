@@ -58,6 +58,9 @@ class TdLibManager(private val context: Context) {
                     else -> Log.d(TAG, "TDLib authorization state: ${state.javaClass.simpleName}")
                 }
             },
+            onSelfUser = { userId ->
+                scope.launch { updateSavedMessagesDestination(userId) }
+            },
             onError = { error -> Log.e(TAG, "TDLib error", error) }
         )
         initializeClient()
@@ -102,6 +105,7 @@ class TdLibManager(private val context: Context) {
         Log.d(TAG, "Validando código de acceso de Telegram")
 
         if (cleanCode.isNotEmpty()) {
+            destinationRepository = repository
             nativeClient?.checkCode(cleanCode)
         } else {
             Log.e(TAG, "Código de verificación no válido")
@@ -138,20 +142,25 @@ class TdLibManager(private val context: Context) {
      * Asegura que el destino de respaldo en Telegram sea "Mensajes Guardados" (Saved Messages).
      * En Telegram, Mensajes Guardados es el chat privado de almacenamiento ilimitado del propio usuario.
      */
-    suspend fun ensureSavedMessagesDestination(repository: BackupRepository) = withContext(Dispatchers.IO) {
-        val currentSettings = repository.getSettings()
-        // ID representativo de Mensajes Guardados (chat privado del usuario)
-        val savedMessagesChatId = 777000L
+    private var destinationRepository: BackupRepository? = null
 
+    private suspend fun updateSavedMessagesDestination(selfUserId: Long) = withContext(Dispatchers.IO) {
+        val repository = destinationRepository ?: return@withContext
+        val currentSettings = repository.getSettings()
         repository.updateSettings(
             currentSettings.copy(
-                telegramChannelId = savedMessagesChatId,
-                topicCameraId = 1,
-                topicWhatsappPhotosId = 2,
-                topicWhatsappDocsId = 3
+                telegramChannelId = selfUserId,
+                topicCameraId = 0,
+                topicWhatsappPhotosId = 0,
+                topicWhatsappDocsId = 0
             )
         )
-        Log.d(TAG, "Destino de respaldo confirmado: 'Mensajes Guardados' de Telegram.")
+        Log.d(TAG, "Destino real de Mensajes Guardados obtenido con getMe(): $selfUserId")
+    }
+
+    suspend fun ensureSavedMessagesDestination(repository: BackupRepository) = withContext(Dispatchers.IO) {
+        destinationRepository = repository
+        Log.d(TAG, "Esperando que TDLib resuelva Mensajes Guardados mediante getMe().")
     }
 
     // Compatibilidad para llamadas existentes
