@@ -1,3 +1,16 @@
+
+import java.util.Properties
+
+val localProperties = Properties().apply {
+  val file = rootProject.file("local.properties")
+  if (file.exists()) file.inputStream().use { load(it) }
+}
+
+fun secretProperty(name: String): String =
+  System.getenv(name) ?: localProperties.getProperty(name, "")
+
+val telegramApiId = secretProperty("TELEGRAM_API_ID").toIntOrNull() ?: 0
+val telegramApiHash = secretProperty("TELEGRAM_API_HASH")
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
 
 plugins {
@@ -19,6 +32,10 @@ android {
     targetSdk = 36
     versionCode = 1
     versionName = "1.0"
+
+    // Telegram TDLib credentials are read from ignored local.properties or environment variables.
+    buildConfigField("int", "TELEGRAM_API_ID", telegramApiId.toString())
+    buildConfigField("String", "TELEGRAM_API_HASH", "\"${telegramApiHash.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
