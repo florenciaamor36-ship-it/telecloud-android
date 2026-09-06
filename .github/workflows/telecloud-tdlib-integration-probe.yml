@@ -64,6 +64,9 @@ jobs:
         run: keytool -genkeypair -v -keystore debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname 'CN=Android Debug,O=Android,C=US'
 
       - name: Build TeleCloud APK with TDLib
+        env:
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
         run: gradle :app:assembleDebug --no-daemon --stacktrace
 
       - name: Upload TeleCloud APK artifact
