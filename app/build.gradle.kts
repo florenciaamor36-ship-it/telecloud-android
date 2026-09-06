@@ -35,8 +35,17 @@ android {
     // Telegram TDLib credentials are read from ignored local.properties or environment variables.
     buildConfigField("int", "TELEGRAM_API_ID", telegramApiId.toString())
     buildConfigField("String", "TELEGRAM_API_HASH", "\"${telegramApiHash.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
-
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+  }
+
+  // Generate one APK per CPU architecture plus a universal APK for maximum compatibility.
+  splits {
+    abi {
+      isEnable = true
+      reset()
+      include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+      isUniversalApk = true
+    }
   }
 
   signingConfigs {
