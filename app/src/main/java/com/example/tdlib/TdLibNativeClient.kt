@@ -40,7 +40,7 @@ class TdLibNativeClient(
         client.send(
             TdApi.SetAuthenticationPhoneNumber(
                 phone,
-                TdApi.PhoneNumberAuthenticationSettings(null, null, false, false, false, false)
+                TdApi.PhoneNumberAuthenticationSettings(false, false, false, false, false, null, null)
             ),
             resultHandler()
         )
