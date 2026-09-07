@@ -1333,6 +1333,14 @@ fun CleanerCandidateRow(
 // 4. CONFIGURACIÓN DE NUBE (100% REAL - SIN SIMULADORES NI TEXTOS FICTICIOS)
 // =========================================================================
 
+private fun cloudFileIdFor(message: org.drinkless.tdlib.TdApi.Message): Int? = when (val content = message.content) {
+    is org.drinkless.tdlib.TdApi.MessageDocument -> content.document.document.id
+    is org.drinkless.tdlib.TdApi.MessagePhoto -> content.photo.sizes.lastOrNull()?.photo?.id
+    is org.drinkless.tdlib.TdApi.MessageVideo -> content.video.video.id
+    is org.drinkless.tdlib.TdApi.MessageAudio -> content.audio.audio.id
+    else -> null
+}
+
 private fun cloudFolderFor(message: org.drinkless.tdlib.TdApi.Message): String {
     val hashtag = Regex("#[A-Za-z0-9_ÁÉÍÓÚáéíóúÑñ-]+").find(message.content.toString())?.value
     return hashtag ?: "#SinCarpeta"
@@ -1360,7 +1368,15 @@ private fun CloudBrowserCard(viewModel: BackupViewModel, enabled: Boolean) {
                 messages.groupBy { cloudFolderFor(it) }.forEach { (folder, folderMessages) ->
                     Text("$folder  ·  ${folderMessages.size} archivos", color = TelegramBlue, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     folderMessages.forEach { message ->
-                        Text("• ${message.id} — ${message.content.javaClass.simpleName}", color = Color.White, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        val cloudFileId = cloudFileIdFor(message)
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("• ${message.id} — ${message.content.javaClass.simpleName}", color = Color.White, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                            if (cloudFileId != null) {
+                                TextButton(onClick = {
+                                    scope.launch { viewModel.tdLibManager.downloadCloudFile(cloudFileId) }
+                                }) { Text("Descargar", fontSize = 11.sp) }
+                            }
+                        }
                     }
                 }
             }

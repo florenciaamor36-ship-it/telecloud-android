@@ -223,6 +223,14 @@ class TdLibManager(private val context: Context) {
         }
     }
 
+    suspend fun downloadCloudFile(fileId: Int): Result<String> = suspendCancellableCoroutine { continuation ->
+        nativeClient?.downloadFile(
+            fileId,
+            onDownloaded = { continuation.resume(Result.success(it)) },
+            onFailure = { continuation.resume(Result.failure(it)) }
+        ) ?: continuation.resume(Result.failure(IllegalStateException("TDLib no está inicializado")))
+    }
+
     /**
      * Sube un archivo real a 'Mensajes Guardados' de Telegram con confirmación real de TDLib.
      */
