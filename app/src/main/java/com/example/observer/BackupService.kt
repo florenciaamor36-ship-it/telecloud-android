@@ -119,12 +119,17 @@ class BackupService : Service() {
                         Log.d(TAG, "Creando carpeta de origen $path: $created")
                     }
 
-                    val observer = BackupFileObserver(applicationContext, path, type)
-                    observer.startWatching()
-                    observers.add(observer)
+                    // FileObserver no es recursivo: vigilar cada subcarpeta evita perder
+                    // medios que WhatsApp, Facebook, Instagram u otra app guarda más abajo.
+                    val directories = directory.walkTopDown().filter { it.isDirectory }.toList()
+                    for (watchedDirectory in directories) {
+                        val observer = BackupFileObserver(applicationContext, watchedDirectory.absolutePath, type)
+                        observer.startWatching()
+                        observers.add(observer)
+                    }
                     // Al activar el respaldo, también se procesa el contenido existente.
-                    observer.enqueueExistingFiles()
-                    Log.i(TAG, "Monitoreando activamente [$type]: $path y archivos existentes encolados")
+                    BackupFileObserver(applicationContext, path, type).enqueueExistingFiles()
+                    Log.i(TAG, "Monitoreando activamente [$type]: ${directories.size} carpetas y archivos existentes encolados")
 
                 } catch (e: Exception) {
                     Log.e(TAG, "Error al iniciar observador para $path: ${e.message}")
