@@ -49,6 +49,7 @@ import com.example.tdlib.TdApi
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.launch
 
 // Paleta de Colores M3 Dark Elegante
 val TelegramBlue = Color(0xFFD0E4FF)
@@ -1333,6 +1334,33 @@ fun CleanerCandidateRow(
 // =========================================================================
 
 @Composable
+private fun CloudBrowserCard(viewModel: BackupViewModel, enabled: Boolean) {
+    var messages by remember { mutableStateOf(emptyArray<org.drinkless.tdlib.TdApi.Message>()) }
+    var loading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    Card(colors = CardDefaults.cardColors(containerColor = CardBackground), border = BorderStroke(1.dp, CardBorderColor), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Mi nube", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 17.sp)
+            Text("Mensajes Guardados de Telegram, incluidos archivos anteriores a TeleCloud.", color = Color.LightGray, fontSize = 12.sp)
+            Button(enabled = enabled && !loading, onClick = {
+                loading = true
+                scope.launch {
+                    val result = viewModel.tdLibManager.loadSavedMessagesPage(viewModel.repository)
+                    result.onSuccess { messages = it }
+                    loading = false
+                }
+            }, modifier = Modifier.fillMaxWidth()) { Text(if (loading) "Cargando nube…" else "Ver archivos de Mi nube") }
+            if (messages.isNotEmpty()) {
+                Text("${messages.size} mensajes cargados", color = StatusGreen, fontSize = 12.sp)
+                messages.forEach { message ->
+                    Text("• ${message.id} — ${message.content.javaClass.simpleName}", color = Color.White, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun CloudSettingsScreen(
     viewModel: BackupViewModel,
     settings: BackupSettings,
@@ -1352,6 +1380,10 @@ fun CloudSettingsScreen(
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        item {
+            CloudBrowserCard(viewModel = viewModel, enabled = isReady)
+        }
+
         // Tarjeta de Sesión Telegram Real
         item {
             Card(
