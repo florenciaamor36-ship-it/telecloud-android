@@ -201,6 +201,28 @@ class TdLibManager(private val context: Context) {
         ) ?: continuation.resume(false)
     }
 
+    /** Lee una página del historial real de Mensajes Guardados, incluidos mensajes antiguos. */
+    suspend fun loadSavedMessagesPage(
+        repository: BackupRepository,
+        fromMessageId: Long = 0L,
+        limit: Int = 50
+    ): Result<Array<org.drinkless.tdlib.TdApi.Message>> = withContext(Dispatchers.IO) {
+        val settings = repository.getSettings()
+        suspendCancellableCoroutine { continuation ->
+        if (settings.telegramChannelId == 0L) {
+            continuation.resume(Result.failure(IllegalStateException("Mensajes Guardados no inicializado")))
+            return@suspendCancellableCoroutine
+        }
+        nativeClient?.loadChatHistory(
+            settings.telegramChannelId,
+            fromMessageId,
+            limit,
+            onLoaded = { continuation.resume(Result.success(it)) },
+            onFailure = { continuation.resume(Result.failure(it)) }
+        ) ?: continuation.resume(Result.failure(IllegalStateException("TDLib no está inicializado")))
+        }
+    }
+
     /**
      * Sube un archivo real a 'Mensajes Guardados' de Telegram con confirmación real de TDLib.
      */

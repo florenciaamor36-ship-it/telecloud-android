@@ -79,6 +79,21 @@ class TdLibNativeClient(
         client.send(TdApi.CheckAuthenticationPassword(password), resultHandler())
     }
 
+    fun loadChatHistory(chatId: Long, fromMessageId: Long = 0L, limit: Int = 50, onLoaded: (Array<TdApi.Message>) -> Unit, onFailure: (Throwable) -> Unit) {
+        client.send(
+            TdApi.GetChatHistory(chatId, fromMessageId, 0, limit, false),
+            object : Client.ResultHandler {
+                override fun onResult(value: TdApi.Object?) {
+                    when (value) {
+                        is TdApi.Messages -> onLoaded(value.messages)
+                        is TdApi.Error -> onFailure(IllegalStateException("TDLib ${value.code}: ${value.message}"))
+                        else -> onFailure(IllegalStateException("Respuesta inesperada al leer Mensajes Guardados"))
+                    }
+                }
+            }
+        )
+    }
+
     fun sendDocument(chatId: Long, filePath: String, onSent: (Long) -> Unit, onFailure: (Throwable) -> Unit) {
         val document = TdApi.InputDocument()
         document.document = TdApi.InputFileLocal(filePath)
