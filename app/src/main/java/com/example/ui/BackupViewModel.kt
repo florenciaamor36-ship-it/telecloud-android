@@ -306,6 +306,7 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                 Pair(File(Environment.getExternalStorageDirectory(), "Documents"), "Documentos"),
                 Pair(File(Environment.getExternalStorageDirectory(), "Music"), "Música"),
                 Pair(File(Environment.getExternalStorageDirectory(), "Movies"), "Videos"),
+                Pair(Environment.getExternalStorageDirectory(), "Todo el teléfono"),
                 Pair(File(Environment.getExternalStorageDirectory(), ".thumbnails"), "Miniaturas Ocultas"),
                 Pair(getApplication<Application>().cacheDir, "Caché Temporal"),
                 Pair(getApplication<Application>().filesDir, "Archivos de App")
@@ -313,7 +314,7 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
 
             for ((dir, label) in standardDirs) {
                 if (dir.exists() && dir.isDirectory) {
-                    scanDirectoryFiles(dir, label, items, visitedPaths, logMap, depth = 0, maxDepth = 2)
+                    scanDirectoryFiles(dir, label, items, visitedPaths, logMap, depth = 0, maxDepth = if (label == "Todo el teléfono") 20 else 2, mediaOnly = label == "Todo el teléfono")
                 }
             }
 
@@ -374,7 +375,8 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
         val resolver = getApplication<Application>().contentResolver
         val sources = listOf(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI to MediaType.IMAGE,
-            MediaStore.Video.Media.EXTERNAL_CONTENT_URI to MediaType.VIDEO
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI to MediaType.VIDEO,
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI to MediaType.AUDIO
         )
         val projection = arrayOf(
             MediaStore.MediaColumns._ID,
@@ -426,7 +428,8 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
         visitedPaths: MutableSet<String>,
         logMap: Map<String, UploadLog>,
         depth: Int,
-        maxDepth: Int
+        maxDepth: Int,
+        mediaOnly: Boolean = false
     ) {
         if (depth > maxDepth) return
         val files = directory.listFiles() ?: return
@@ -434,7 +437,7 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
         for (file in files) {
             if (file.isDirectory) {
                 // Subdirectorio (incluye carpetas ocultas y temporales como .thumbnails o cache)
-                scanDirectoryFiles(file, folderName, items, visitedPaths, logMap, depth + 1, maxDepth)
+                scanDirectoryFiles(file, folderName, items, visitedPaths, logMap, depth + 1, maxDepth, mediaOnly)
             } else if (file.isFile && visitedPaths.add(file.absolutePath)) {
                 val fileName = file.name
                 val isHidden = fileName.startsWith(".") || file.parentFile?.name?.startsWith(".") == true
@@ -454,6 +457,7 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                 }
 
                 val mediaType = determineMediaType(fileName, isHidden, isTemporary)
+                if (mediaOnly && mediaType == MediaType.OTHER) continue
 
                 items.add(
                     GalleryMediaItem(
