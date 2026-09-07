@@ -94,6 +94,23 @@ class TdLibNativeClient(
         )
     }
 
+    fun downloadFile(fileId: Int, onDownloaded: (String) -> Unit, onFailure: (Throwable) -> Unit) {
+        client.send(
+            TdApi.DownloadFile(fileId, 32, 0, 0, false),
+            object : Client.ResultHandler {
+                override fun onResult(value: TdApi.Object?) {
+                    when (value) {
+                        is TdApi.File -> {
+                            val local = value.local
+                            if (local.isDownloadingCompleted) onDownloaded(local.path)
+                        }
+                        is TdApi.Error -> onFailure(IllegalStateException("TDLib ${value.code}: ${value.message}"))
+                    }
+                }
+            }
+        )
+    }
+
     fun sendDocument(chatId: Long, filePath: String, onSent: (Long) -> Unit, onFailure: (Throwable) -> Unit) {
         val document = TdApi.InputDocument()
         document.document = TdApi.InputFileLocal(filePath)
