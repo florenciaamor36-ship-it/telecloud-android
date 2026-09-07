@@ -41,6 +41,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import android.widget.VideoView
 import android.widget.MediaController
+import android.widget.Toast
 import android.net.Uri
 import android.media.MediaPlayer
 import android.content.Intent
@@ -1351,6 +1352,7 @@ private fun CloudBrowserCard(viewModel: BackupViewModel, enabled: Boolean) {
     var messages by remember { mutableStateOf(emptyArray<org.drinkless.tdlib.TdApi.Message>()) }
     var loading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     Card(colors = CardDefaults.cardColors(containerColor = CardBackground), border = BorderStroke(1.dp, CardBorderColor), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Mi nube", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 17.sp)
@@ -1373,7 +1375,11 @@ private fun CloudBrowserCard(viewModel: BackupViewModel, enabled: Boolean) {
                             Text("• ${message.id} — ${message.content.javaClass.simpleName}", color = Color.White, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                             if (cloudFileId != null) {
                                 TextButton(onClick = {
-                                    scope.launch { viewModel.tdLibManager.downloadCloudFile(cloudFileId) }
+                                    Toast.makeText(context, "Descargando desde Telegram…", Toast.LENGTH_SHORT).show()
+                                    scope.launch {
+                                        val result = viewModel.tdLibManager.downloadCloudFile(cloudFileId)
+                                        Toast.makeText(context, if (result.isSuccess) "Descarga terminada" else "No se pudo descargar el archivo", Toast.LENGTH_LONG).show()
+                                    }
                                 }) { Text("Descargar", fontSize = 11.sp) }
                             }
                         }
