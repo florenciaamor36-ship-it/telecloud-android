@@ -1404,6 +1404,32 @@ private fun CloudBrowserCard(viewModel: BackupViewModel, enabled: Boolean) {
 }
 
 @Composable
+private fun NotificationSettingsCard() {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("telecloud_notifications", android.content.Context.MODE_PRIVATE) }
+    var enabled by remember { mutableStateOf(prefs.getBoolean("enabled", true)) }
+    var uploads by remember { mutableStateOf(prefs.getBoolean("uploads", true)) }
+    var errors by remember { mutableStateOf(prefs.getBoolean("errors", true)) }
+    var downloads by remember { mutableStateOf(prefs.getBoolean("downloads", true)) }
+    var cleanup by remember { mutableStateOf(prefs.getBoolean("cleanup", true)) }
+    Card(colors = CardDefaults.cardColors(containerColor = CardBackground), border = BorderStroke(1.dp, CardBorderColor), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Text("Notificaciones", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 17.sp)
+            Text("Elegí qué avisos querés recibir.", color = Color.LightGray, fontSize = 12.sp)
+            fun save(key: String, value: Boolean) = prefs.edit().putBoolean(key, value).apply()
+            listOf("Notificaciones generales" to enabled, "Subidas" to uploads, "Errores" to errors, "Descargas" to downloads, "Limpieza de caché" to cleanup).forEach { (label, value) ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(label, color = Color.White, fontSize = 13.sp)
+                    Switch(checked = value, enabled = label == "Notificaciones generales" || enabled, onCheckedChange = {
+                        when (label) { "Notificaciones generales" -> { enabled = it; save("enabled", it) }; "Subidas" -> { uploads = it; save("uploads", it) }; "Errores" -> { errors = it; save("errors", it) }; "Descargas" -> { downloads = it; save("downloads", it) }; else -> { cleanup = it; save("cleanup", it) } }
+                    })
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun CloudSettingsScreen(
     viewModel: BackupViewModel,
     settings: BackupSettings,
@@ -1426,6 +1452,7 @@ fun CloudSettingsScreen(
         item {
             CloudBrowserCard(viewModel = viewModel, enabled = isReady)
         }
+        item { NotificationSettingsCard() }
 
         // Tarjeta de Sesión Telegram Real
         item {
