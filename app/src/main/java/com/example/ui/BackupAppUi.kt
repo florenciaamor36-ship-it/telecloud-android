@@ -1381,6 +1381,19 @@ private fun CloudBrowserCard(viewModel: BackupViewModel, enabled: Boolean) {
                                         Toast.makeText(context, if (result.isSuccess) "Descarga terminada" else "No se pudo descargar el archivo", Toast.LENGTH_LONG).show()
                                     }
                                 }) { Text("Descargar", fontSize = 11.sp) }
+                                if (message.content is org.drinkless.tdlib.TdApi.MessagePhoto || message.content is org.drinkless.tdlib.TdApi.MessageVideo || message.content is org.drinkless.tdlib.TdApi.MessageAudio) {
+                                    TextButton(onClick = {
+                                        Toast.makeText(context, "Preparando vista…", Toast.LENGTH_SHORT).show()
+                                        scope.launch {
+                                            viewModel.tdLibManager.downloadCloudFile(cloudFileId).getOrNull()?.let { path ->
+                                                runCatching {
+                                                    val intent = Intent(Intent.ACTION_VIEW, Uri.fromFile(File(path))).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                    context.startActivity(intent)
+                                                }.onFailure { Toast.makeText(context, "No hay reproductor compatible", Toast.LENGTH_LONG).show() }
+                                            }
+                                        }
+                                    }) { Text("Abrir", fontSize = 11.sp) }
+                                }
                             }
                         }
                     }
