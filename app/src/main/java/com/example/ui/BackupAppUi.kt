@@ -1333,6 +1333,11 @@ fun CleanerCandidateRow(
 // 4. CONFIGURACIÓN DE NUBE (100% REAL - SIN SIMULADORES NI TEXTOS FICTICIOS)
 // =========================================================================
 
+private fun cloudFolderFor(message: org.drinkless.tdlib.TdApi.Message): String {
+    val hashtag = Regex("#[A-Za-z0-9_ÁÉÍÓÚáéíóúÑñ-]+").find(message.content.toString())?.value
+    return hashtag ?: "#SinCarpeta"
+}
+
 @Composable
 private fun CloudBrowserCard(viewModel: BackupViewModel, enabled: Boolean) {
     var messages by remember { mutableStateOf(emptyArray<org.drinkless.tdlib.TdApi.Message>()) }
@@ -1352,8 +1357,11 @@ private fun CloudBrowserCard(viewModel: BackupViewModel, enabled: Boolean) {
             }, modifier = Modifier.fillMaxWidth()) { Text(if (loading) "Cargando nube…" else "Ver archivos de Mi nube") }
             if (messages.isNotEmpty()) {
                 Text("${messages.size} mensajes cargados", color = StatusGreen, fontSize = 12.sp)
-                messages.forEach { message ->
-                    Text("• ${message.id} — ${message.content.javaClass.simpleName}", color = Color.White, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                messages.groupBy { cloudFolderFor(it) }.forEach { (folder, folderMessages) ->
+                    Text("$folder  ·  ${folderMessages.size} archivos", color = TelegramBlue, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    folderMessages.forEach { message ->
+                        Text("• ${message.id} — ${message.content.javaClass.simpleName}", color = Color.White, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                 }
             }
         }
