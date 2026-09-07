@@ -27,6 +27,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -1683,6 +1685,7 @@ fun MediaItemDetailDialog(
 ) {
     var isPlaying by remember { mutableStateOf(false) }
     var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
+    var showFullScreen by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     DisposableEffect(Unit) {
@@ -1851,13 +1854,20 @@ fun MediaItemDetailDialog(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                IconButton(
+                    onClick = { showFullScreen = true },
+                    modifier = Modifier.background(Color.White.copy(alpha = 0.08f), CircleShape)
+                ) {
+                    Icon(Icons.Default.Fullscreen, contentDescription = "Ver en pantalla completa", tint = Color.LightGray)
+                }
+
                 // Open in System Player Fallback
                 IconButton(
                     onClick = {
                         try {
                             val intent = Intent(Intent.ACTION_VIEW).apply {
                                 val file = File(item.filePath)
-                                val uri = Uri.fromFile(file)
+                                val uri = item.contentUri?.let(Uri::parse) ?: Uri.fromFile(file)
                                 val mimeType = when (item.mediaType) {
                                     MediaType.IMAGE -> "image/*"
                                     MediaType.VIDEO -> "video/*"
@@ -1865,7 +1875,7 @@ fun MediaItemDetailDialog(
                                     else -> "*/*"
                                 }
                                 setDataAndType(uri, mimeType)
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             }
                             context.startActivity(intent)
                         } catch (e: Exception) {
@@ -1898,6 +1908,31 @@ fun MediaItemDetailDialog(
         },
         containerColor = CardBackground
     )
+
+    if (showFullScreen) {
+        Dialog(
+            onDismissRequest = { showFullScreen = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(color = Color.Black, modifier = Modifier.fillMaxSize()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    if (item.mediaType == MediaType.IMAGE) {
+                        AsyncImage(
+                            model = item.contentUri ?: File(item.filePath),
+                            contentDescription = "Vista de pantalla completa",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                        )
+                    } else {
+                        Text("La vista completa está disponible para imágenes; abrí este archivo con su reproductor.", color = Color.White, modifier = Modifier.padding(24.dp))
+                    }
+                    IconButton(onClick = { showFullScreen = false }, modifier = Modifier.align(Alignment.TopEnd).padding(12.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Cerrar pantalla completa", tint = Color.White)
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
