@@ -80,9 +80,8 @@ class TdLibNativeClient(
     }
 
     fun loadChatHistory(chatId: Long, fromMessageId: Long = 0L, limit: Int = 50, onLoaded: (Array<TdApi.Message>) -> Unit, onFailure: (Throwable) -> Unit) {
-        client.send(
-            TdApi.GetChatHistory(chatId, fromMessageId, 0, limit, false),
-            object : Client.ResultHandler {
+        fun requestHistory() {
+            client.send(TdApi.GetChatHistory(chatId, fromMessageId, 0, limit, false), object : Client.ResultHandler {
                 override fun onResult(value: TdApi.Object?) {
                     when (value) {
                         is TdApi.Messages -> onLoaded(value.messages)
@@ -90,8 +89,13 @@ class TdLibNativeClient(
                         else -> onFailure(IllegalStateException("Respuesta inesperada al leer Mensajes Guardados"))
                     }
                 }
+            })
+        }
+        client.send(TdApi.CreatePrivateChat(chatId, false), object : Client.ResultHandler {
+            override fun onResult(value: TdApi.Object?) {
+                if (value is TdApi.Error) onFailure(IllegalStateException("TDLib ${value.code}: ${value.message}")) else requestHistory()
             }
-        )
+        })
     }
 
     fun downloadFile(fileId: Int, onDownloaded: (String) -> Unit, onFailure: (Throwable) -> Unit) {

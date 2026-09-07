@@ -1352,6 +1352,7 @@ private fun cloudFolderFor(message: org.drinkless.tdlib.TdApi.Message): String {
 private fun CloudBrowserCard(viewModel: BackupViewModel, enabled: Boolean) {
     var messages by remember { mutableStateOf(emptyArray<org.drinkless.tdlib.TdApi.Message>()) }
     var loading by remember { mutableStateOf(false) }
+    var cloudError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     Card(colors = CardDefaults.cardColors(containerColor = CardBackground), border = BorderStroke(1.dp, CardBorderColor), modifier = Modifier.fillMaxWidth()) {
@@ -1363,9 +1364,11 @@ private fun CloudBrowserCard(viewModel: BackupViewModel, enabled: Boolean) {
                 scope.launch {
                     val result = viewModel.tdLibManager.loadSavedMessagesPage(viewModel.repository)
                     result.onSuccess { messages = it }
+                    result.onFailure { cloudError = it.message ?: "No se pudo leer Mensajes Guardados" }
                     loading = false
                 }
             }, modifier = Modifier.fillMaxWidth()) { Text(if (loading) "Cargando nube…" else "Ver archivos de Mi nube") }
+            cloudError?.let { Text("Error: $it", color = Color(0xFFFF8A80), fontSize = 12.sp) }
             if (messages.isNotEmpty()) {
                 Text("${messages.size} mensajes cargados", color = StatusGreen, fontSize = 12.sp)
                 messages.groupBy { cloudFolderFor(it) }.forEach { (folder, folderMessages) ->
