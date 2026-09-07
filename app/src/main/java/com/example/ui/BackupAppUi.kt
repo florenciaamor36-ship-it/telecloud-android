@@ -1369,7 +1369,7 @@ private fun CloudBrowserCard(viewModel: BackupViewModel, enabled: Boolean) {
                     loading = false
                 }
             }, modifier = Modifier.fillMaxWidth()) { Text(if (loading) "Cargando nube…" else "Ver archivos de Mi nube") }
-            cloudError?.let { Text("Error: $it", color = Color(0xFFFF8A80), fontSize = 12.sp) }
+            cloudError?.let { Text("No se pudo cargar Mi nube. Tocá el botón para reintentar.", color = Color(0xFFFFCC80), fontSize = 12.sp) }
             if (messages.isNotEmpty()) {
                 Text("${messages.size} mensajes cargados", color = StatusGreen, fontSize = 12.sp)
                 messages.groupBy { cloudFolderFor(it) }.forEach { (folder, folderMessages) ->
