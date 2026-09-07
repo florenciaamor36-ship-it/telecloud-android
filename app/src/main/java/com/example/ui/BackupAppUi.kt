@@ -9,6 +9,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -531,13 +532,25 @@ fun GalleryScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(filteredItems, key = { it.filePath }) { item ->
-                    GalleryMediaCard(
-                        item = item,
-                        onClick = { onItemClick(item) },
-                        onBackupClick = { onBackupClick(item) }
-                    )
-                }
+                filteredItems.groupBy { it.folderName.ifBlank { "Otros" } }
+                    .forEach { (folder, folderItems) ->
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Text(
+                                text = "$folder  ·  ${folderItems.size} archivos",
+                                color = TelegramBlue,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(top = 6.dp, bottom = 2.dp)
+                            )
+                        }
+                        items(folderItems, key = { it.filePath }) { item ->
+                            GalleryMediaCard(
+                                item = item,
+                                onClick = { onItemClick(item) },
+                                onBackupClick = { onBackupClick(item) }
+                            )
+                        }
+                    }
             }
         }
     }
