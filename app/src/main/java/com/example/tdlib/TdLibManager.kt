@@ -38,6 +38,7 @@ class TdLibManager(private val context: Context) {
 
     private var activePhoneNumber: String = ""
     private var nativeClient: TdLibNativeClient? = null
+    @Volatile private var phoneRequestInFlight = false
 
     // Parámetros reales de Telegram. La sesión TDLib todavía requiere enlazar la biblioteca JNI.
     private val telegramParameters = TdApi.TdlibParameters(
@@ -54,7 +55,10 @@ class TdLibManager(private val context: Context) {
             onAuthorizationState = { state ->
                 when (state) {
                     is org.drinkless.tdlib.TdApi.AuthorizationStateWaitPhoneNumber -> _authState.value = TdApi.AuthorizationStateWaitPhoneNumber()
-                    is org.drinkless.tdlib.TdApi.AuthorizationStateWaitCode -> _authState.value = TdApi.AuthorizationStateWaitCode()
+                    is org.drinkless.tdlib.TdApi.AuthorizationStateWaitCode -> {
+                        phoneRequestInFlight = false
+                        _authState.value = TdApi.AuthorizationStateWaitCode()
+                    }
                     is org.drinkless.tdlib.TdApi.AuthorizationStateWaitPassword -> _authState.value = TdApi.AuthorizationStateWaitPassword()
                     is org.drinkless.tdlib.TdApi.AuthorizationStateReady -> {
                         _authState.value = TdApi.AuthorizationStateReady()
@@ -67,6 +71,7 @@ class TdLibManager(private val context: Context) {
                 scope.launch { updateSavedMessagesDestination(userId) }
             },
             onError = { error ->
+                phoneRequestInFlight = false
                 _authError.value = error.message ?: "Telegram rechazó la solicitud"
                 Log.e(TAG, "TDLib error", error)
             }
@@ -99,7 +104,9 @@ class TdLibManager(private val context: Context) {
      */
     fun setPhoneNumber(phoneNumber: String) {
         val cleanPhone = phoneNumber.trim()
+        if (phoneRequestInFlight) return
         _authError.value = null
+        phoneRequestInFlight = true
         Log.d(TAG, "Configurando número de teléfono: $cleanPhone")
         activePhoneNumber = cleanPhone
 
