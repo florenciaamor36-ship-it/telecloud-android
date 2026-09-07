@@ -65,6 +65,19 @@ class BackupFileObserver(
         }
     }
 
+    /** Encola los archivos que ya existían al activar una carpeta, no solo los nuevos. */
+    suspend fun enqueueExistingFiles() {
+        val root = File(folderPath)
+        root.walkTopDown()
+            .filter { it.isFile && !it.name.startsWith(".") }
+            .forEach { file ->
+                val existing = repository.getLogByFilePath(file.absolutePath)
+                if (existing?.status == "COMPLETED" || existing?.status == "UPLOADING") return@forEach
+                repository.logUploadStarted(file.absolutePath, file.name, folderType)
+                enqueueBackupWork(file.absolutePath, folderType)
+            }
+    }
+
     /**
      * Encola la tarea de subida asíncrona en WorkManager aplicando las restricciones
      * de red (Wi-Fi o Datos) y estado de batería configurados por el usuario.

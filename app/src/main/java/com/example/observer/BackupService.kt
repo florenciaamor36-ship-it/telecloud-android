@@ -122,7 +122,9 @@ class BackupService : Service() {
                     val observer = BackupFileObserver(applicationContext, path, type)
                     observer.startWatching()
                     observers.add(observer)
-                    Log.i(TAG, "Monitoreando activamente [$type]: $path")
+                    // Al activar el respaldo, también se procesa el contenido existente.
+                    observer.enqueueExistingFiles()
+                    Log.i(TAG, "Monitoreando activamente [$type]: $path y archivos existentes encolados")
 
                 } catch (e: Exception) {
                     Log.e(TAG, "Error al iniciar observador para $path: ${e.message}")
