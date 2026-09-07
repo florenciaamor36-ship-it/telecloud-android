@@ -6,6 +6,7 @@ import android.content.ContentUris
 import android.provider.MediaStore
 import android.os.Environment
 import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.*
@@ -493,8 +494,10 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
 
     fun backupItemNow(item: GalleryMediaItem) {
         viewModelScope.launch {
+            Toast.makeText(getApplication(), "Preparando ${item.fileName}…", Toast.LENGTH_SHORT).show()
             repository.logUploadStarted(item.filePath, item.fileName, item.folderName)
             tdLibManager.ensureBackupChannelAndTopics(repository)
+            Toast.makeText(getApplication(), "Subiendo ${item.fileName} a la nube…", Toast.LENGTH_SHORT).show()
             val settings = repository.getSettings()
             val topicId = when {
                 item.mediaType == MediaType.IMAGE || item.mediaType == MediaType.VIDEO ->
@@ -502,7 +505,12 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                 else ->
                     if (settings.topicWhatsappDocsId != 0) settings.topicWhatsappDocsId else 103
             }
-            tdLibManager.uploadFileToTopic(item.filePath, topicId, repository)
+            val uploaded = tdLibManager.uploadFileToTopic(item.filePath, topicId, repository)
+            Toast.makeText(
+                getApplication(),
+                if (uploaded) "Listo: ${item.fileName} guardado en Mensajes Guardados" else "No se pudo subir ${item.fileName}",
+                Toast.LENGTH_LONG
+            ).show()
             refreshGalleryAndCleaner()
         }
     }
