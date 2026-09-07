@@ -7,6 +7,8 @@ import com.example.data.BackupRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -89,13 +91,11 @@ class TdLibManager(private val context: Context) {
         scope.launch {
             val database = com.example.data.AppDatabase.getDatabase(context)
             val settings = database.backupDao().getSettings()
-            if (settings?.activePhoneNumber != null && settings.telegramChannelId != 0L) {
+            if (settings?.activePhoneNumber != null) {
                 activePhoneNumber = settings.activePhoneNumber
-                _authState.value = TdApi.AuthorizationStateReady()
-                _isConnected.value = true
-            } else {
-                _authState.value = TdApi.AuthorizationStateWaitPhoneNumber()
             }
+            // La sesión solo se considera lista cuando TDLib nativo emite AuthorizationStateReady.
+            // No se falsifica el estado usando únicamente valores persistidos en Room.
         }
     }
 
@@ -234,6 +234,13 @@ class TdLibManager(private val context: Context) {
     /**
      * Sube un archivo real a 'Mensajes Guardados' de Telegram con confirmación real de TDLib.
      */
+    private suspend fun awaitTelegramReady() {
+        if (_isConnected.value && _authState.value is TdApi.AuthorizationStateReady) return
+        withTimeout(30_000L) {
+            authState.first { it is TdApi.AuthorizationStateReady }
+        }
+    }
+
     suspend fun uploadFileToTopic(
         filePath: String,
         topicId: Int,
@@ -246,6 +253,13 @@ class TdLibManager(private val context: Context) {
             return@withContext false
         }
 
+        try {
+            awaitTelegramReady()
+        } catch (e: Exception) {
+            repository.logUploadFailed(filePath, "Telegram todavía no está listo: ${e.message ?: "sin conexión"}")
+            return@withContext false
+        }
+
         val settings = repository.getSettings()
         if (settings.telegramChannelId == 0L) {
             Log.e(TAG, "El destino 'Mensajes Guardados' no está configurado")
@@ -254,43 +268,5 @@ class TdLibManager(private val context: Context) {
         }
 
         return@withContext sendFileToTelegram(filePath, settings.telegramChannelId, repository)
-
-        var success = false
-        var attempts = 0
-        val maxAttempts = 3
-        var backoffMs = 1000L
-
-        val tag = when (topicId) {
-            1 -> "#TeleCloud #Camara"
-            2 -> "#TeleCloud #WhatsApp"
-            3 -> "#TeleCloud #Documentos"
-            else -> "#TeleCloud #Archivos"
-        }
-
-        while (attempts < maxAttempts && !success) {
-            attempts++
-            try {
-                Log.d(TAG, "Subiendo a 'Mensajes Guardados' ($attempts/$maxAttempts): ${file.name} ($tag) [${file.length()} bytes]")
-                
-                // Tiempo de transferencia adaptativo al tamaño real del archivo
-                val transferTimeMs = (500L + (file.length() / 100_000L).coerceAtMost(3000L))
-                delay(transferTimeMs)
-
-                val messageId = System.currentTimeMillis() + (1000..9999).random()
-                repository.logUploadCompleted(filePath, messageId)
-                success = true
-                Log.i(TAG, "Archivo respaldado exitosamente en 'Mensajes Guardados': ${file.name}")
-            } catch (e: Exception) {
-                Log.w(TAG, "Error durante la subida (intento $attempts): ${e.message}")
-                if (attempts >= maxAttempts) {
-                    repository.logUploadFailed(filePath, e.message ?: "Error en la subida a Mensajes Guardados")
-                    return@withContext false
-                }
-                delay(backoffMs)
-                backoffMs *= 2
-            }
-        }
-
-        return@withContext success
     }
 }

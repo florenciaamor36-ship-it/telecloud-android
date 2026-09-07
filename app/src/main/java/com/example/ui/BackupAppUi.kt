@@ -1353,6 +1353,7 @@ private fun CloudBrowserCard(viewModel: BackupViewModel, enabled: Boolean) {
     var messages by remember { mutableStateOf(emptyArray<org.drinkless.tdlib.TdApi.Message>()) }
     var loading by remember { mutableStateOf(false) }
     var cloudError by remember { mutableStateOf<String?>(null) }
+    var videoPreviewPath by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     Card(colors = CardDefaults.cardColors(containerColor = CardBackground), border = BorderStroke(1.dp, CardBorderColor), modifier = Modifier.fillMaxWidth()) {
@@ -1390,10 +1391,14 @@ private fun CloudBrowserCard(viewModel: BackupViewModel, enabled: Boolean) {
                                         Toast.makeText(context, "Preparando vista…", Toast.LENGTH_SHORT).show()
                                         scope.launch {
                                             viewModel.tdLibManager.downloadCloudFile(cloudFileId).getOrNull()?.let { path ->
-                                                runCatching {
-                                                    val intent = Intent(Intent.ACTION_VIEW, Uri.fromFile(File(path))).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                                    context.startActivity(intent)
-                                                }.onFailure { Toast.makeText(context, "No hay reproductor compatible", Toast.LENGTH_LONG).show() }
+                                                if (message.content is org.drinkless.tdlib.TdApi.MessageVideo) {
+                                                    videoPreviewPath = path
+                                                } else {
+                                                    runCatching {
+                                                        val intent = Intent(Intent.ACTION_VIEW, Uri.fromFile(File(path))).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                        context.startActivity(intent)
+                                                    }.onFailure { Toast.makeText(context, "No hay reproductor compatible", Toast.LENGTH_LONG).show() }
+                                                }
                                             }
                                         }
                                     }) { Text("Abrir", fontSize = 11.sp) }
@@ -1404,6 +1409,19 @@ private fun CloudBrowserCard(viewModel: BackupViewModel, enabled: Boolean) {
                 }
             }
         }
+    }
+    videoPreviewPath?.let { path ->
+        AlertDialog(
+            onDismissRequest = { videoPreviewPath = null },
+            title = { Text("Vista previa de video") },
+            text = {
+                AndroidView(
+                    factory = { ctx -> VideoView(ctx).apply { setVideoPath(path); setMediaController(MediaController(ctx)); start() } },
+                    modifier = Modifier.fillMaxWidth().height(240.dp)
+                )
+            },
+            confirmButton = { TextButton(onClick = { videoPreviewPath = null }) { Text("Cerrar") } }
+        )
     }
 }
 
