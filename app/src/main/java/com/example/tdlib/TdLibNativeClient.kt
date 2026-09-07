@@ -86,18 +86,27 @@ class TdLibNativeClient(
             document,
             TdApi.FormattedText("", emptyArray())
         )
-        client.send(
-            TdApi.SendMessage(chatId, null, null, null, null, content),
-            object : Client.ResultHandler {
-                override fun onResult(value: TdApi.Object?) {
-                    when (value) {
-                        is TdApi.Message -> onSent(value.id)
-                        is TdApi.Error -> onFailure(IllegalStateException("TDLib ${value.code}: ${value.message}"))
-                        else -> onFailure(IllegalStateException("Unexpected TDLib send result"))
-                    }
+        // Ensure the user's Saved Messages chat is opened in TDLib before sending.
+        client.send(TdApi.CreatePrivateChat(chatId, false), object : Client.ResultHandler {
+            override fun onResult(chatResult: TdApi.Object?) {
+                if (chatResult is TdApi.Error) {
+                    onFailure(IllegalStateException("TDLib ${chatResult.code}: ${chatResult.message}"))
+                    return
                 }
+                client.send(
+                    TdApi.SendMessage(chatId, null, null, null, null, content),
+                    object : Client.ResultHandler {
+                        override fun onResult(value: TdApi.Object?) {
+                            when (value) {
+                                is TdApi.Message -> onSent(value.id)
+                                is TdApi.Error -> onFailure(IllegalStateException("TDLib ${value.code}: ${value.message}"))
+                                else -> onFailure(IllegalStateException("Unexpected TDLib send result"))
+                            }
+                        }
+                    }
+                )
             }
-        )
+        })
     }
 
     private fun resultHandler() = object : Client.ResultHandler {
