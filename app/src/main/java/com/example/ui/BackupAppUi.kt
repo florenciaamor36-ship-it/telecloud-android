@@ -50,6 +50,7 @@ import com.example.tdlib.TdApi
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 // Paleta de Colores M3 Dark Elegante
@@ -1404,6 +1405,32 @@ private fun CloudBrowserCard(viewModel: BackupViewModel, enabled: Boolean) {
 }
 
 @Composable
+private fun CacheCleanupCard() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var automatic by remember { mutableStateOf(context.getSharedPreferences("telecloud_cache", 0).getBoolean("automatic", false)) }
+    var confirm by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf<String?>(null) }
+    val cacheSize = remember { context.cacheDir.walkTopDown().filter { it.isFile }.sumOf { it.length() } }
+    Card(colors = CardDefaults.cardColors(containerColor = CardBackground), border = BorderStroke(1.dp, CardBorderColor), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Text("Limpieza segura de caché", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 17.sp)
+            Text("Solo elimina temporales y miniaturas. No toca originales, sesiones ni bases de datos.", color = Color.LightGray, fontSize = 12.sp)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Limpieza automática", color = Color.White, fontSize = 13.sp)
+                Switch(checked = automatic, onCheckedChange = { automatic = it; context.getSharedPreferences("telecloud_cache", 0).edit().putBoolean("automatic", it).apply() })
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Caché temporal: ${cacheSize / 1024} KB", color = Color.LightGray, fontSize = 12.sp)
+                OutlinedButton(onClick = { confirm = true }) { Text("Limpiar") }
+            }
+        }
+    }
+    if (confirm) AlertDialog(onDismissRequest = { confirm = false }, title = { Text("¿Limpiar caché?") }, text = { Text("Se eliminarán $cacheSize bytes de temporales y miniaturas. Los archivos personales no se tocarán.") }, confirmButton = { TextButton(onClick = { confirm = false; scope.launch(Dispatchers.IO) { context.cacheDir.listFiles()?.forEach { it.deleteRecursively() }; message = "Caché temporal limpiada" } }) { Text("Confirmar") } }, dismissButton = { TextButton(onClick = { confirm = false }) { Text("Cancelar") } })
+    message?.let { Toast.makeText(context, it, Toast.LENGTH_LONG).show(); message = null }
+}
+
+@Composable
 private fun NotificationSettingsCard() {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("telecloud_notifications", android.content.Context.MODE_PRIVATE) }
@@ -1453,6 +1480,7 @@ fun CloudSettingsScreen(
             CloudBrowserCard(viewModel = viewModel, enabled = isReady)
         }
         item { NotificationSettingsCard() }
+        item { CacheCleanupCard() }
 
         // Tarjeta de Sesión Telegram Real
         item {
